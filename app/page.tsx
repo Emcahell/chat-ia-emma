@@ -124,7 +124,7 @@ export default function ChatVenezuela() {
 
   return (
     <div className="flex flex-col h-screen max-w-2xl mx-auto p-2 md:p-4 font-sans">
-      <header className="py-4">
+      <header className="absolute top-0 left-0 right-0 py-4">
         <h1 className="text-md md:text-xl font-bold text-blue-400">
           Chat Emma <span className="text-gray-400">|</span>{" "}
           <span className="text-sm md:text-xl">
@@ -133,7 +133,7 @@ export default function ChatVenezuela() {
         </h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto my-4 space-y-4">
+      <div className="flex-1 overflow-y-auto space-y-4">
         {messages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center text-gray-500">
@@ -157,7 +157,7 @@ export default function ChatVenezuela() {
         )}
         {loading && (
           <div className="flex justify-start">
-            <div className="max-w-xs px-4 py-2 rounded-lg text-white">
+            <div className="max-w-xs px-4 py-2 rounded-lg text-white animate-pulse">
               Escribiendo...
             </div>
           </div>
@@ -184,10 +184,7 @@ export default function ChatVenezuela() {
             height="24"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round">
+            stroke="currentColor">
             <path stroke="none" d="M0 0h24v24H0z" fill="none" />
             <path d="M4.698 4.034l16.302 7.966l-16.302 7.966a.503 .503 0 0 1 -.546 -.124a.555 .555 0 0 1 -.12 -.568l2.468 -7.274l-2.468 -7.274a.555 .555 0 0 1 .12 -.568a.503 .503 0 0 1 .546 -.124z" />
             <path d="M6.5 12h14.5" />
