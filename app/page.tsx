@@ -70,7 +70,7 @@ export default function ChatVenezuela() {
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const userMsg = { role: "user", content: input };
+    const userMsg = { role: "user", content: input.trim() };
 
     // Update messages with localStorage persistence
     setMessages((prev) => {
@@ -87,22 +87,38 @@ export default function ChatVenezuela() {
       textareaRef.current.style.height = 'auto';
     }
 
-    // sliding window
-    const messagesForApi = messages.slice(-API_WINDOW_SIZE);
+    // Create updated copy for API (includes the new message)
+    const updatedMessages = [...messages, userMsg];
+    
+    // Filter messages for API (only valid ones)
+    const filteredMessages = updatedMessages
+      .filter(msg => msg.role && msg.content && msg.content.trim())
+      .map(msg => ({
+        role: msg.role,
+        content: msg.content.trim(),
+      }));
+
+    // sliding window with filtered messages
+    const messagesForApi = filteredMessages.slice(-API_WINDOW_SIZE);
 
     const res = await fetch("/api/chat", {
       method: "POST",
-      body: JSON.stringify({ messages: [...messagesForApi, userMsg] }),
+      body: JSON.stringify({ messages: messagesForApi }),
     });
 
     const data = await res.json();
-
-    // Update messages with AI response
-    setMessages((prev) => {
-      const newMessages = [...prev, data];
-      return newMessages.slice(-MAX_MESSAGES);
-    });
-
+    
+    // Validate API response before adding to messages
+    if (data && data.role && data.content) {
+      setMessages((prev) => {
+        const newMessages = [...prev, data];
+        // Keep only last MAX_MESSAGES
+        return newMessages.slice(-MAX_MESSAGES);
+      });
+    } else {
+      console.error("Respuesta inválida de la API:", data);
+    }
+    
     setLoading(false);
   };
 

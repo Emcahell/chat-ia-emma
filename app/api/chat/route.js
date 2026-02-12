@@ -8,10 +8,12 @@ export async function POST(req) {
   try {
     const { messages } = await req.json();
 
-    const systemMessage = {
-      role: "system",
-      content: `${venezuelaContext}\n\n${rules}`,
-    };
+    const cleanMessages = messages
+      .filter(msg => msg.role && msg.content) 
+      .map(msg => ({
+        role: msg.role,
+        content: msg.content.trim(),
+      }));
 
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -23,7 +25,8 @@ export async function POST(req) {
         },
         body: JSON.stringify({
           model: "meta-llama/llama-4-scout-17b-16e-instruct",
-          messages: [systemMessage, ...messages],
+          messages: [{ role: "system", content: `${venezuelaContext}\n${rules}` },
+          ...cleanMessages, ],
           temperature: 1,
           max_tokens: 1024,
         }),
