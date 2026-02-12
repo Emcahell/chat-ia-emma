@@ -31,6 +31,14 @@ export async function POST(req) {
     );
 
     const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Error de Groq:", data);
+      return new Response(JSON.stringify({ error: data.error?.message || "Error externo" }), { status: response.status });
+    }
+
+    return new Response(JSON.stringify(data.choices[0].message), { status: 200 });
+
     return NextResponse.json(data.choices[0].message);
   } catch (error) {
     return NextResponse.json(
