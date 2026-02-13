@@ -149,7 +149,7 @@ export default function ChatVenezuela() {
               key={idx}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-xs px-4 py-2 rounded-lg ${msg.role === "user" ? "bg-blue-500/50 text-white" : "bg-gray-900 text-white"}`}>
+                className={`max-w-xs px-4 py-2 rounded-lg ${msg.role === "user" ? "bg-blue-500 dark:bg-blue-500/50 text-white" : "bg-gray-900 text-white"}`}>
                 {msg.content}
               </div>
             </div>
@@ -157,7 +157,7 @@ export default function ChatVenezuela() {
         )}
         {loading && (
           <div className="flex justify-start">
-            <div className="max-w-xs px-4 py-2 rounded-lg text-white animate-pulse">
+            <div className="max-w-xs px-4 py-2 rounded-lg text-gray-600 dark:text-white animate-pulse">
               Escribiendo...
             </div>
           </div>
@@ -172,7 +172,7 @@ export default function ChatVenezuela() {
             value={input}
             onChange={handleTextareaChange}
             onKeyPress={handleKeyPress}
-            className="flex-1 px-4 py-2 border rounded-lg focus:outline-none border-none bg-gray-900 resize-none overflow-hidden min-h-10 max-h-30"
+            className="flex-1 px-4 py-2 text-white border rounded-lg focus:outline-none border-none bg-gray-900 resize-none overflow-hidden min-h-10 max-h-30"
             placeholder="Escribe tu mensaje..."
             rows={1}
           />
