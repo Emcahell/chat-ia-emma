@@ -16,7 +16,7 @@ export default function ChatVenezuela() {
 
   useEffect(() => {
     let mounted = true;
-    
+
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored && mounted) {
@@ -30,7 +30,7 @@ export default function ChatVenezuela() {
     } catch (error) {
       console.error("Error loading messages from localStorage:", error);
     }
-    
+
     return () => {
       mounted = false;
     };
@@ -53,15 +53,15 @@ export default function ChatVenezuela() {
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    
+
     // Auto-resize textarea
     const textarea = e.target;
-    textarea.style.height = 'auto';
+    textarea.style.height = "auto";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`; // Max height of 120px
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
@@ -84,16 +84,16 @@ export default function ChatVenezuela() {
 
     // Reset textarea height
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = "auto";
     }
 
     // Create updated copy for API (includes the new message)
     const updatedMessages = [...messages, userMsg];
-    
+
     // Filter messages for API (only valid ones)
     const filteredMessages = updatedMessages
-      .filter(msg => msg.role && msg.content && msg.content.trim())
-      .map(msg => ({
+      .filter((msg) => msg.role && msg.content && msg.content.trim())
+      .map((msg) => ({
         role: msg.role,
         content: msg.content.trim(),
       }));
@@ -107,7 +107,7 @@ export default function ChatVenezuela() {
     });
 
     const data = await res.json();
-    
+
     // Validate API response before adding to messages
     if (data && data.role && data.content) {
       setMessages((prev) => {
@@ -118,14 +118,14 @@ export default function ChatVenezuela() {
     } else {
       console.error("Respuesta inválida de la API:", data);
     }
-    
+
     setLoading(false);
   };
 
   return (
-    <div className="flex flex-col h-screen max-w-2xl mx-auto p-2 md:p-4 font-sans">
-      <header className="absolute top-0 left-0 right-0 py-4">
-        <h1 className="text-md md:text-xl font-bold text-blue-400">
+    <div className="relative flex flex-col max-w-2xl mx-auto mt-16 mb-24 p-2 md:p-4 font-sans">
+      <header className="fixed top-0 left-0 right-0 py-4 bg-background">
+        <h1 className="text-md md:text-xl px-2 font-bold text-blue-400">
           Chat Emma <span className="text-gray-400">|</span>{" "}
           <span className="text-sm md:text-xl">
             Tu pana de Inteligencia Artificial 🇻🇪
@@ -165,35 +165,38 @@ export default function ChatVenezuela() {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="flex gap-2">
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={handleTextareaChange}
-          onKeyPress={handleKeyPress}
-          className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 border-blue-400 resize-none overflow-hidden min-h-10 max-h-30"
-          placeholder="Escribe tu mensaje..."
-          rows={1}
-        />
-        <button
-          onClick={sendMessage}
-          disabled={loading || !input.trim()}
-          className="px-6 py-4 bg-blue-500/50 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:opacity-50">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-            <path d="M4.698 4.034l16.302 7.966l-16.302 7.966a.503 .503 0 0 1 -.546 -.124a.555 .555 0 0 1 -.12 -.568l2.468 -7.274l-2.468 -7.274a.555 .555 0 0 1 .12 -.568a.503 .503 0 0 1 .546 -.124z" />
-            <path d="M6.5 12h14.5" />
-          </svg>
-        </button>
-      </div>
-      <div className="text-[10px] text-gray-500 text-center mt-2">
-        La información proporcionada por la IA puede cometer errores. Verifica siempre los datos importantes | Información actualizada hasta 2023
-      </div>
+      <article className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-background p-2">
+        <div className="flex gap-2 px-2">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={handleTextareaChange}
+            onKeyPress={handleKeyPress}
+            className="flex-1 px-4 py-2 border rounded-lg focus:outline-none border-none bg-gray-900 resize-none overflow-hidden min-h-10 max-h-30"
+            placeholder="Escribe tu mensaje..."
+            rows={1}
+          />
+          <button
+            onClick={sendMessage}
+            disabled={loading || !input.trim()}
+            className="px-6 py-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:opacity-50">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+              <path d="M4.698 4.034l16.302 7.966l-16.302 7.966a.503 .503 0 0 1 -.546 -.124a.555 .555 0 0 1 -.12 -.568l2.468 -7.274l-2.468 -7.274a.555 .555 0 0 1 .12 -.568a.503 .503 0 0 1 .546 -.124z" />
+              <path d="M6.5 12h14.5" />
+            </svg>
+          </button>
+        </div>
+        <div className="text-[10px] text-gray-500 text-center mt-2">
+          La información proporcionada por la IA puede cometer errores. Verifica
+          siempre los datos importantes | Información actualizada hasta 2023
+        </div>
+      </article>
     </div>
   );
 }
