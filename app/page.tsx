@@ -193,7 +193,7 @@ export default function ChatVenezuela() {
           </button>
         </div>
         <div className="text-[10px] text-gray-500 text-center mt-2">
-          La información proporcionada por la IA puede cometer errores. Verifica
+          Pendiente mano, la información proporcionada por la IA puede ser erronea. Verifica
           siempre los datos importantes | Información actualizada hasta 2023
         </div>
       </article>
