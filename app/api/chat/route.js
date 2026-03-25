@@ -8,6 +8,8 @@ export async function POST(req) {
   try {
     const { messages } = await req.json();
 
+    console.log("Received messages:", messages.length);
+
     const cleanMessages = messages
       .filter(msg => msg.role && msg.content) 
       .map(msg => ({
@@ -15,6 +17,11 @@ export async function POST(req) {
         content: msg.content.trim(),
       }));
 
+    console.log("Clean messages:", cleanMessages.length);
+    console.log("API Key exists:", !!process.env.GROQ_API_KEY);
+
+    console.log("Making request to Groq...");
+    
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -37,11 +44,16 @@ export async function POST(req) {
       },
     );
 
+    console.log("Response status:", response.status);
+    console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error("Error de Groq:", errorData);
       return new Response(JSON.stringify({ error: errorData.error?.message || "Error externo" }), { status: response.status });
     }
+
+    console.log("Starting streaming...");
 
     // Handle streaming response
     if (response.body) {
@@ -62,7 +74,9 @@ export async function POST(req) {
                 for (const line of lines) {
                   if (line.startsWith('data: ')) {
                     const data = line.slice(6);
+                    console.log("Received chunk:", data);
                     if (data === '[DONE]') {
+                      console.log("Stream finished");
                       controller.close();
                       return;
                     }
@@ -71,9 +85,11 @@ export async function POST(req) {
                       const parsed = JSON.parse(data);
                       const content = parsed.choices?.[0]?.delta?.content || '';
                       if (content) {
+                        console.log("Content to send:", content);
                         controller.enqueue(`data: ${JSON.stringify({ content })}\n\n`);
                       }
                     } catch (e) {
+                      console.error("JSON parse error:", e);
                       // Skip invalid JSON
                     }
                   }
@@ -97,6 +113,7 @@ export async function POST(req) {
       );
     }
 
+    console.log("No response body from Groq");
     return new Response(JSON.stringify({ error: "No se recibió respuesta de streaming" }), { status: 500 });
   } catch (error) {
     return NextResponse.json(

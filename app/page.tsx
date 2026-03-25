@@ -107,6 +107,9 @@ export default function ChatVenezuela() {
       body: JSON.stringify({ messages: messagesForApi }),
     });
 
+    console.log("Response status:", res.status);
+    console.log("Response headers:", Object.fromEntries(res.headers.entries()));
+
     if (!res.ok) {
       console.error("Error en la respuesta:", await res.text());
       setLoading(false);
@@ -115,6 +118,7 @@ export default function ChatVenezuela() {
 
     // Handle streaming response
     if (res.body) {
+      console.log("Starting to read stream...");
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let assistantMessage = { role: "assistant", content: "" };
@@ -128,14 +132,19 @@ export default function ChatVenezuela() {
       try {
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            console.log("Stream reading completed");
+            break;
+          }
           
           const chunk = decoder.decode(value, { stream: true });
+          console.log("Received chunk:", chunk);
           const lines = chunk.split('\n');
           
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               const data = line.slice(6);
+              console.log("Processing data:", data);
               if (data === '[DONE]') break;
               
               try {
@@ -143,6 +152,7 @@ export default function ChatVenezuela() {
                 const content = parsed.content || '';
                 if (content) {
                   assistantMessage.content += content;
+                  console.log("Updated content:", assistantMessage.content);
                   
                   // Update the last message (assistant message)
                   setMessages((prev) => {
@@ -152,6 +162,7 @@ export default function ChatVenezuela() {
                   });
                 }
               } catch (e) {
+                console.error("JSON parse error:", e);
                 // Skip invalid JSON
               }
             }
@@ -163,6 +174,7 @@ export default function ChatVenezuela() {
         reader.releaseLock();
       }
     } else {
+      console.log("No response body received");
       const data = await res.json();
       console.error("Respuesta inválida de la API:", data);
     }
