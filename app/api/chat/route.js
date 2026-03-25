@@ -24,25 +24,80 @@ export async function POST(req) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "meta-llama/llama-4-scout-17b-16e-instruct",
+          model: "openai/gpt-oss-120b",
           messages: [{ role: "system", content: `${venezuelaContext}\n${rules}` },
           ...cleanMessages, ],
           temperature: 1,
-          max_tokens: 1024,
+          max_completion_tokens: 8192,
+          top_p: 1,
+          reasoning_effort: "medium",
+          stream: true,
+          stop: null,
         }),
       },
     );
 
-    const data = await response.json();
-
     if (!response.ok) {
-      console.error("Error de Groq:", data);
-      return new Response(JSON.stringify({ error: data.error?.message || "Error externo" }), { status: response.status });
+      const errorData = await response.json();
+      console.error("Error de Groq:", errorData);
+      return new Response(JSON.stringify({ error: errorData.error?.message || "Error externo" }), { status: response.status });
     }
 
-    return new Response(JSON.stringify(data.choices[0].message), { status: 200 });
+    // Handle streaming response
+    if (response.body) {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      
+      return new Response(
+        new ReadableStream({
+          async start(controller) {
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+                
+                for (const line of lines) {
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    if (data === '[DONE]') {
+                      controller.close();
+                      return;
+                    }
+                    
+                    try {
+                      const parsed = JSON.parse(data);
+                      const content = parsed.choices?.[0]?.delta?.content || '';
+                      if (content) {
+                        controller.enqueue(`data: ${JSON.stringify({ content })}\n\n`);
+                      }
+                    } catch (e) {
+                      // Skip invalid JSON
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error("Streaming error:", error);
+              controller.error(error);
+            } finally {
+              reader.releaseLock();
+            }
+          }
+        }),
+        {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        }
+      );
+    }
 
-    return NextResponse.json(data.choices[0].message);
+    return new Response(JSON.stringify({ error: "No se recibió respuesta de streaming" }), { status: 500 });
   } catch (error) {
     return NextResponse.json(
       { error: "Se escoñetó algo en el servidor" },

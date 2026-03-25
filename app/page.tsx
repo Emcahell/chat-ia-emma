@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 
 const STORAGE_KEY = "chat-emma-messages";
 const MAX_MESSAGES = 30;
@@ -106,16 +107,63 @@ export default function ChatVenezuela() {
       body: JSON.stringify({ messages: messagesForApi }),
     });
 
-    const data = await res.json();
+    if (!res.ok) {
+      console.error("Error en la respuesta:", await res.text());
+      setLoading(false);
+      return;
+    }
 
-    // Validate API response before adding to messages
-    if (data && data.role && data.content) {
+    // Handle streaming response
+    if (res.body) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantMessage = { role: "assistant", content: "" };
+      
+      // Add empty assistant message first
       setMessages((prev) => {
-        const newMessages = [...prev, data];
-        // Keep only last MAX_MESSAGES
+        const newMessages = [...prev, assistantMessage];
         return newMessages.slice(-MAX_MESSAGES);
       });
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') break;
+              
+              try {
+                const parsed = JSON.parse(data);
+                const content = parsed.content || '';
+                if (content) {
+                  assistantMessage.content += content;
+                  
+                  // Update the last message (assistant message)
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { ...assistantMessage };
+                    return updated;
+                  });
+                }
+              } catch (e) {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error en streaming:", error);
+      } finally {
+        reader.releaseLock();
+      }
     } else {
+      const data = await res.json();
       console.error("Respuesta inválida de la API:", data);
     }
 
@@ -150,7 +198,24 @@ export default function ChatVenezuela() {
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-xs px-4 py-2 rounded-lg ${msg.role === "user" ? "bg-blue-500 dark:bg-blue-500/50 text-white" : "bg-gray-900 text-white"}`}>
-                {msg.content}
+                {msg.role === "user" ? (
+                  msg.content
+                ) : (
+                  <ReactMarkdown
+                    components={{
+                      strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                      em: ({ children }) => <em className="italic">{children}</em>,
+                      p: ({ children }) => <p className="mb-1">{children}</p>,
+                      ul: ({ children }) => <ul className="list-disc list-inside mb-1">{children}</ul>,
+                      ol: ({ children }) => <ol className="list-decimal list-inside mb-1">{children}</ol>,
+                      li: ({ children }) => <li className="mb-1">{children}</li>,
+                      code: ({ children }) => <code className="bg-gray-800 px-1 rounded text-sm">{children}</code>,
+                      blockquote: ({ children }) => <blockquote className="border-l-2 border-gray-600 pl-2 italic">{children}</blockquote>,
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                )}
               </div>
             </div>
           ))
@@ -193,7 +258,7 @@ export default function ChatVenezuela() {
           </button>
         </div>
         <div className="text-[10px] text-gray-500 text-center mt-2">
-          Pendiente mano, la información proporcionada por la IA puede ser erronea. Verifica siempre los datos importantes | Información actualizada hasta 2023
+          Pendiente mano, la información proporcionada por la IA puede ser erronea. Verifica siempre los datos importantes | Información actualizada hasta 2024
         </div>
       </article>
     </div>
