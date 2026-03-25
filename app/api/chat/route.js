@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { venezuelaContext } from "../../../content/context-venezuela.js";
 import { rules } from "../../../content/rules.js";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export async function POST(req) {
   try {
@@ -53,60 +53,60 @@ export async function POST(req) {
     const decoder = new TextDecoder();
     let buffer = "";
     
-    const stream = new TransformStream();
-    const writer = stream.writable.getWriter();
-    
-    (async () => {
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            writer.close();
-            return;
-          }
-          
-          const chunk = decoder.decode(value, { stream: true });
-          buffer += chunk;
-          
-          // Split by newlines but handle incomplete JSON
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || ""; // Keep last last incomplete line in buffer
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') {
-                writer.close();
+    return new Response(
+      new ReadableStream({
+        async start(controller) {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                controller.close();
                 return;
               }
               
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content || '';
-                if (content) {
-                  await writer.write(`data: ${JSON.stringify({ content })}\n\n`);
+              const chunk = decoder.decode(value, { stream: true });
+              buffer += chunk;
+              
+              // Split by newlines but handle incomplete JSON
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || ""; // Keep last incomplete line in buffer
+              
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6);
+                  if (data === '[DONE]') {
+                    controller.close();
+                    return;
+                  }
+                  
+                  try {
+                    const parsed = JSON.parse(data);
+                    const content = parsed.choices?.[0]?.delta?.content || '';
+                    if (content) {
+                      controller.enqueue(`data: ${JSON.stringify({ content })}\n\n`);
+                    }
+                  } catch (e) {
+                    // Skip invalid JSON
+                  }
                 }
-              } catch (e) {
-                // Skip invalid JSON
               }
             }
+          } catch (error) {
+            console.error("Streaming error:", error);
+            controller.error(error);
+          } finally {
+            reader.releaseLock();
           }
         }
-      } catch (error) {
-        console.error("Streaming error:", error);
-        writer.abort(error);
-      } finally {
-        reader.releaseLock();
+      }),
+      {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
       }
-    })();
-    
-    return new Response(stream.readable, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    });
+    );
   } catch (error) {
     return NextResponse.json(
       { error: "Se escoñetó algo en el servidor" },
