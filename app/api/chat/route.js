@@ -22,7 +22,7 @@ export async function POST(req) {
 
     console.log("Making request to Groq...");
     console.log("Request body:", JSON.stringify({
-      model: "openai/gpt-oss-120b",
+      model: "llama-3.3-70b-versatile",
       messages: [{ role: "system", content: `${venezuelaContext}\n${rules}` },
       ...cleanMessages, ],
       temperature: 1,
@@ -42,13 +42,12 @@ export async function POST(req) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "openai/gpt-oss-120b",
+          model: "llama-3.3-70b-versatile",
           messages: [{ role: "system", content: `${venezuelaContext}\n${rules}` },
           ...cleanMessages, ],
           temperature: 1,
-          max_completion_tokens: 8192,
+          max_tokens: 8192,
           top_p: 1,
-          reasoning_effort: "medium",
           stream: true,
           stop: null,
         }),
