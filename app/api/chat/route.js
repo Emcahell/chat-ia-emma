@@ -21,6 +21,17 @@ export async function POST(req) {
     console.log("API Key exists:", !!process.env.GROQ_API_KEY);
 
     console.log("Making request to Groq...");
+    console.log("Request body:", JSON.stringify({
+      model: "openai/gpt-oss-120b",
+      messages: [{ role: "system", content: `${venezuelaContext}\n${rules}` },
+      ...cleanMessages, ],
+      temperature: 1,
+      max_completion_tokens: 8192,
+      top_p: 1,
+      reasoning_effort: "medium",
+      stream: true,
+      stop: null,
+    }, null, 2));
     
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -55,66 +66,72 @@ export async function POST(req) {
 
     console.log("Starting streaming...");
 
+    if (!response.body) {
+      console.error("No response body from Groq");
+      return new Response(JSON.stringify({ error: "No se recibió respuesta de streaming" }), { status: 500 });
+    }
+
     // Handle streaming response
-    if (response.body) {
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      
-      return new Response(
-        new ReadableStream({
-          async start(controller) {
-            try {
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n');
-                
-                for (const line of lines) {
-                  if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    console.log("Received chunk:", data);
-                    if (data === '[DONE]') {
-                      console.log("Stream finished");
-                      controller.close();
-                      return;
+    console.log("Response body exists, creating stream...");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    
+    return new Response(
+      new ReadableStream({
+        async start(controller) {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                console.log("Groq stream finished");
+                controller.close();
+                return;
+              }
+              
+              const chunk = decoder.decode(value, { stream: true });
+              console.log("Raw chunk from Groq:", chunk);
+              const lines = chunk.split('\n');
+              
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6);
+                  console.log("Received chunk:", data);
+                  if (data === '[DONE]') {
+                    console.log("Stream finished");
+                    controller.close();
+                    return;
+                  }
+                  
+                  try {
+                    const parsed = JSON.parse(data);
+                    const content = parsed.choices?.[0]?.delta?.content || '';
+                    if (content) {
+                      console.log("Content to send:", content);
+                      controller.enqueue(`data: ${JSON.stringify({ content })}\n\n`);
                     }
-                    
-                    try {
-                      const parsed = JSON.parse(data);
-                      const content = parsed.choices?.[0]?.delta?.content || '';
-                      if (content) {
-                        console.log("Content to send:", content);
-                        controller.enqueue(`data: ${JSON.stringify({ content })}\n\n`);
-                      }
-                    } catch (e) {
-                      console.error("JSON parse error:", e);
-                      // Skip invalid JSON
-                    }
+                  } catch (e) {
+                    console.error("JSON parse error:", e);
+                    // Skip invalid JSON
                   }
                 }
               }
-            } catch (error) {
-              console.error("Streaming error:", error);
-              controller.error(error);
-            } finally {
-              reader.releaseLock();
             }
+          } catch (error) {
+            console.error("Streaming error:", error);
+            controller.error(error);
+          } finally {
+            reader.releaseLock();
           }
-        }),
-        {
-          headers: {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-          },
         }
-      );
-    }
-
-    console.log("No response body from Groq");
-    return new Response(JSON.stringify({ error: "No se recibió respuesta de streaming" }), { status: 500 });
+      }),
+      {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      }
+    );
   } catch (error) {
     return NextResponse.json(
       { error: "Se escoñetó algo en el servidor" },
