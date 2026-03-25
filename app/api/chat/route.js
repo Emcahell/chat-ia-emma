@@ -19,19 +19,41 @@ export async function POST(req) {
 
     console.log("Clean messages:", cleanMessages.length);
     console.log("API Key exists:", !!process.env.GROQ_API_KEY);
+    console.log("API Key length:", process.env.GROQ_API_KEY?.length);
 
-    console.log("Making request to Groq...");
-    console.log("Request body:", JSON.stringify({
-      model: "llama-3.3-70b-versatile",
-      messages: [{ role: "system", content: `${venezuelaContext}\n${rules}` },
-      ...cleanMessages, ],
-      temperature: 1,
-      max_completion_tokens: 8192,
-      top_p: 1,
-      reasoning_effort: "medium",
-      stream: true,
-      stop: null,
-    }, null, 2));
+    // Test simple request without streaming first
+    console.log("Making test request to Groq...");
+    
+    const testResponse = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: "Say hello" }],
+          max_tokens: 10,
+        }),
+      },
+    );
+
+    console.log("Test response status:", testResponse.status);
+    console.log("Test response headers:", Object.fromEntries(testResponse.headers.entries()));
+
+    if (!testResponse.ok) {
+      const errorData = await testResponse.text();
+      console.error("Test error from Groq:", errorData);
+      return new Response(JSON.stringify({ error: `Groq API error: ${errorData}` }), { status: 500 });
+    }
+
+    const testData = await testResponse.json();
+    console.log("Test response data:", testData);
+
+    // If test works, try streaming
+    console.log("Making streaming request to Groq...");
     
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
